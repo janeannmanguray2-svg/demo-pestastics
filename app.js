@@ -1410,188 +1410,205 @@ const UI = {
     }
   },
 
-  async viewContractDetail(contractId) {
-    this.showLoading();
-    try {
-      const contract = await DB.getContract(contractId);
-      if (!contract) {
-        this.showToast('Contract not found', 'error');
-        return;
-      }
+async viewContractDetail(contractId) {
+  this.showLoading();
+  try {
+    const contract = await DB.getContractById(contractId);  // FIXED: was getContract
+    if (!contract) {
+      this.showToast('Contract not found', 'error');
+      return;
+    }
 
-      const client = await DB.getClientByCustomerNo(contract.customerNo);
-      const treatments = await DB.getTreatmentsByContract(contractId);
-      const payments = await DB.getPaymentsByContract(contractId);
+    const client = await DB.getClientByCustomerNo(contract.customerNo);
+    const treatments = await DB.getTreatmentsByContractId(contractId);  // FIXED: was getTreatmentsByContract
+    const payments = await DB.getPaymentsByContractId(contractId);  // FIXED: was getPaymentsByContract
 
-      // Calculate payment totals
-      const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-      const balance = parseFloat(contract.totalAmount || 0) - totalPaid;
+    // Calculate payment totals
+    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    const balance = parseFloat(contract.totalAmount || 0) - totalPaid;
 
-      // Generate HTML content
-      const content = `
-        <div class="contract-detail-grid">
-          <!-- Client Information -->
-          <div class="detail-section">
-            <h4 class="detail-section-title">Client Information</h4>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-label">Customer No:</span>
-                <span class="detail-value">${contract.customerNo}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Client Name:</span>
-                <span class="detail-value">${client?.clientName || '-'}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Contact Person:</span>
-                <span class="detail-value">${client?.contactPerson || '-'}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Contact Number:</span>
-                <span class="detail-value">${client?.contactNumber || '-'}</span>
-              </div>
-              <div class="detail-item full-width">
-                <span class="detail-label">Address:</span>
-                <span class="detail-value">${client?.address || '-'}</span>
-              </div>
+    // Generate HTML content
+    const content = `
+      <div class="contract-detail-grid">
+        <!-- Client Information -->
+        <div class="detail-section">
+          <h4 class="detail-section-title">Client Information</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Customer No:</span>
+              <span class="detail-value">${contract.customerNo}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Client Name:</span>
+              <span class="detail-value">${client?.clientName || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Contact Person:</span>
+              <span class="detail-value">${client?.contactPerson || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Contact Number:</span>
+              <span class="detail-value">${client?.contactNumber || '-'}</span>
+            </div>
+            <div class="detail-item full-width">
+              <span class="detail-label">Address:</span>
+              <span class="detail-value">${client?.address || '-'}</span>
             </div>
           </div>
+        </div>
 
-          <!-- Contract Information -->
-          <div class="detail-section">
-            <h4 class="detail-section-title">Contract Information</h4>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-label">Contract No:</span>
-                <span class="detail-value">#${contract.contractNumber}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Status:</span>
-                <span class="badge badge-${contract.status}">${contract.status}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Treatment Method:</span>
-                <span class="detail-value">${contract.treatmentMethod}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Frequency:</span>
-                <span class="detail-value">${contract.treatmentFrequency}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Start Date:</span>
-                <span class="detail-value">${Validation.formatDate(contract.contractStartDate)}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">End Date:</span>
-                <span class="detail-value">${Validation.formatDate(contract.contractEndDate)}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Contract Length:</span>
-                <span class="detail-value">${contract.contractLength} months</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Warranty:</span>
-                <span class="detail-value">${contract.warrantyYears} year(s)</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Sales Agent:</span>
-                <span class="detail-value">${contract.salesAgent || '-'}</span>
-              </div>
+        <!-- Contract Information -->
+        <div class="detail-section">
+          <h4 class="detail-section-title">Contract Information</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Contract No:</span>
+              <span class="detail-value">#${contract.contractNumber}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Status:</span>
+              <span class="badge badge-${contract.status === 'active' ? 'success' : contract.status === 'expired' ? 'danger' : 'muted'}">${contract.status}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Treatment Method:</span>
+              <span class="detail-value">${contract.treatmentMethod}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Frequency:</span>
+              <span class="detail-value">${contract.treatmentFrequency}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Start Date:</span>
+              <span class="detail-value">${Validation.formatDate(contract.contractStartDate)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">End Date:</span>
+              <span class="detail-value">${Validation.formatDate(contract.contractEndDate)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Contract Length:</span>
+              <span class="detail-value">${contract.contractLength} months</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Warranty:</span>
+              <span class="detail-value">${contract.warrantyYears} year(s)</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Sales Agent:</span>
+              <span class="detail-value">${contract.salesAgent || '-'}</span>
             </div>
           </div>
+        </div>
 
-          <!-- Financial Information -->
-          <div class="detail-section">
-            <h4 class="detail-section-title">Financial Information</h4>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-label">Total Amount:</span>
-                <span class="detail-value text-bold">${Validation.formatCurrency(contract.totalAmount)}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Downpayment:</span>
-                <span class="detail-value">${Validation.formatCurrency(contract.downpaymentAmount)} (${contract.downpaymentPercent}%)</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Total Paid:</span>
-                <span class="detail-value text-success">${Validation.formatCurrency(totalPaid)}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Balance:</span>
-                <span class="detail-value ${balance > 0 ? 'text-danger' : 'text-success'}">${Validation.formatCurrency(balance)}</span>
-              </div>
+        <!-- Financial Information -->
+        <div class="detail-section">
+          <h4 class="detail-section-title">Financial Information</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Total Amount:</span>
+              <span class="detail-value text-bold">${Validation.formatCurrency(contract.totalAmount)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Downpayment:</span>
+              <span class="detail-value">${Validation.formatCurrency(contract.downpaymentAmount)} (${contract.downpaymentPercent}%)</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Total Paid:</span>
+              <span class="detail-value text-success">${Validation.formatCurrency(totalPaid)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Balance:</span>
+              <span class="detail-value ${balance > 0 ? 'text-danger' : 'text-success'}">${Validation.formatCurrency(balance)}</span>
             </div>
           </div>
+        </div>
 
-          <!-- Treatments Schedule -->
-          <div class="detail-section full-width">
-            <h4 class="detail-section-title">Treatment Schedule (${treatments.length} treatments)</h4>
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Date</th>
-                    <th>Treatment Type</th>
-                    <th>Status</th>
-                    <th>Team</th>
-                    <th>Time Slot</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${treatments.length === 0 ? 
-                    '<tr><td colspan="6" class="text-center text-muted">No treatments scheduled</td></tr>' :
-                    treatments.map((t, idx) => `
+        <!-- Treatments Schedule -->
+        <div class="detail-section full-width">
+          <h4 class="detail-section-title">Treatment Schedule (${treatments.length} treatments)</h4>
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Date</th>
+                  <th>Treatment Type</th>
+                  <th>Status</th>
+                  <th>Team</th>
+                  <th>Time Slot</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${treatments.length === 0 ? 
+                  '<tr><td colspan="6" class="text-center text-muted">No treatments scheduled</td></tr>' :
+                  treatments.map((t, idx) => {
+                    const status = DB.getTreatmentStatus(t);
+                    const statusClass = status === 'Completed' ? 'badge-success' : status === 'Lapsed' ? 'badge-danger' : status === 'Cancelled' ? 'badge-muted' : 'badge-info';
+                    return `
                       <tr>
-                        <td>${idx + 1}</td>
-                        <td>${Validation.formatDate(t.treatmentDate)}</td>
-                        <td>${t.treatmentType}</td>
-                        <td><span class="badge badge-${t.status}">${t.status}</span></td>
-                        <td>${t.teamName || '-'}</td>
+                        <td>${t.treatmentNo || (idx + 1)}</td>
+                        <td>${Validation.formatDate(t.dateScheduled)}</td>
+                        <td>${t.treatmentType || '-'}</td>
+                        <td><span class="badge ${statusClass}">${status}</span></td>
+                        <td>${t.teamId || '-'}</td>
                         <td>${t.timeSlot || '-'}</td>
                       </tr>
-                    `).join('')
-                  }
-                </tbody>
-              </table>
-            </div>
+                    `;
+                  }).join('')
+                }
+              </tbody>
+            </table>
           </div>
+        </div>
 
-          <!-- Payment History -->
-          <div class="detail-section full-width">
-            <h4 class="detail-section-title">Payment History (${payments.length} payments)</h4>
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>OR Number</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Type</th>
-                    <th>Received By</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${payments.length === 0 ? 
-                    '<tr><td colspan="6" class="text-center text-muted">No payments recorded</td></tr>' :
-                    payments.map(p => `
+        <!-- Payment History -->
+        <div class="detail-section full-width">
+          <h4 class="detail-section-title">Payment History (${payments.length} payments)</h4>
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>OR Number</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Type</th>
+                  <th>Received By</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${payments.length === 0 ? 
+                  '<tr><td colspan="6" class="text-center text-muted">No payments recorded</td></tr>' :
+                  payments.map(p => {
+                    const statusClass = p.status === 'Deposited' ? 'badge-success' : p.status === 'Remitted' ? 'badge-info' : 'badge-warning';
+                    return `
                       <tr>
                         <td>${p.orNumber}</td>
                         <td>${Validation.formatDate(p.paymentDate)}</td>
                         <td class="text-bold">${Validation.formatCurrency(p.amount)}</td>
                         <td>${p.paymentType}</td>
                         <td>${p.receivedBy}</td>
-                        <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                        <td><span class="badge ${statusClass}">${p.status}</span></td>
                       </tr>
-                    `).join('')
-                  }
-                </tbody>
-              </table>
-            </div>
+                    `;
+                  }).join('')
+                }
+              </tbody>
+            </table>
           </div>
         </div>
-      `;
+      </div>
+    `;
+
+    document.getElementById('contract-detail-content').innerHTML = content;
+    document.getElementById('contract-detail-modal').classList.remove('hidden');
+  } catch (error) {
+    console.error('Error loading contract details:', error);
+    this.showToast('Error loading contract details', 'error');
+  } finally {
+    this.hideLoading();
+  }
+},
 
       document.getElementById('contract-detail-content').innerHTML = content;
       document.getElementById('contract-detail-modal').classList.remove('hidden');
@@ -2365,51 +2382,55 @@ const UI = {
     document.getElementById('complaint-modal').classList.add('hidden');
   },
 
-  async saveComplaint() {
-    const customerNo = document.getElementById('complaint-customer').value;
-    const dateReported = document.getElementById('complaint-date').value;
-    const description = document.getElementById('complaint-description').value.trim();
+async saveComplaint() {
+  const customerNo = document.getElementById('complaint-customer').value;
+  const dateReported = document.getElementById('complaint-date').value;
+  const description = document.getElementById('complaint-description').value.trim();
 
-    if (!customerNo || !dateReported || !description) {
-      this.showToast('Please fill in all required fields', 'error');
-      return;
+  if (!customerNo || !dateReported || !description) {
+    this.showToast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  this.showLoading();
+  try {
+    const complaintId = document.getElementById('complaint-id').value;
+
+    const complaint = {
+      id: complaintId || null,
+      customerNo,
+      dateReported,
+      description,
+      priorityLevel: document.getElementById('complaint-priority').value,
+      assignedTo: document.getElementById('complaint-assigned').value,
+      resolutionNotes: document.getElementById('complaint-resolution').value.trim(),
+      status: complaintId ? (await DB.getComplaintById(complaintId))?.status || 'Open' : 'Open'
+    };
+
+    // Only set createdAt for new complaints
+    if (!complaintId) {
+      complaint.createdAt = new Date().toISOString();
     }
 
-    this.showLoading();
-    try {
-      const complaintId = document.getElementById('complaint-id').value;
+    await DB.saveComplaint(complaint);
 
-      const complaint = {
-        id: complaintId || null,
-        customerNo,
-        dateReported,
-        description,
-        priorityLevel: document.getElementById('complaint-priority').value,
-        assignedTo: document.getElementById('complaint-assigned').value,
-        resolutionNotes: document.getElementById('complaint-resolution').value.trim(),
-        status: complaintId ? (await DB.getComplaintById(complaintId))?.status || 'Open' : 'Open',
-        createdAt: complaintId ? undefined : new Date().toISOString()
-      };
+    await DB.saveContractUpdate({
+      customerNo,
+      changeType: complaintId ? 'Complaint Updated' : 'Complaint Created',
+      oldValue: '-',
+      newValue: description.substring(0, 50),
+      reason: complaint.priorityLevel
+    });
 
-      await DB.saveComplaint(complaint);
-
-      await DB.saveContractUpdate({
-        customerNo,
-        changeType: complaintId ? 'Complaint Updated' : 'Complaint Created',
-        oldValue: '-',
-        newValue: description.substring(0, 50),
-        reason: complaint.priorityLevel
-      });
-
-      this.closeComplaintModal();
-      this.showToast(complaintId ? 'Complaint updated' : 'Complaint created');
-      this.renderComplaintsPage();
-    } catch (error) {
-      this.showToast('Error saving complaint: ' + error.message, 'error');
-    } finally {
-      this.hideLoading();
-    }
-  },
+    this.closeComplaintModal();
+    this.showToast(complaintId ? 'Complaint updated' : 'Complaint created');
+    this.renderComplaintsPage();
+  } catch (error) {
+    this.showToast('Error saving complaint: ' + error.message, 'error');
+  } finally {
+    this.hideLoading();
+  }
+}
 
   async completeComplaint(complaintId) {
     this.showLoading();
@@ -2587,47 +2608,51 @@ const UI = {
     document.getElementById('inspection-modal').classList.add('hidden');
   },
 
-  async saveInspection() {
-    const clientName = document.getElementById('inspection-client-name').value.trim();
-    const contactNumber = document.getElementById('inspection-contact').value.trim();
-    const inspectionDate = document.getElementById('inspection-date').value;
-    const inspectedBy = document.getElementById('inspection-by').value;
-    const address = document.getElementById('inspection-address').value.trim();
+async saveInspection() {
+  const clientName = document.getElementById('inspection-client-name').value.trim();
+  const contactNumber = document.getElementById('inspection-contact').value.trim();
+  const inspectionDate = document.getElementById('inspection-date').value;
+  const inspectedBy = document.getElementById('inspection-by').value;
+  const address = document.getElementById('inspection-address').value.trim();
 
-    if (!clientName || !contactNumber || !inspectionDate || !inspectedBy || !address) {
-      this.showToast('Please fill in all required fields', 'error');
-      return;
+  if (!clientName || !contactNumber || !inspectionDate || !inspectedBy || !address) {
+    this.showToast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  this.showLoading();
+  try {
+    const inspectionId = document.getElementById('inspection-id').value;
+    const pestProblems = Array.from(document.querySelectorAll('#inspection-pest-checkboxes input:checked')).map(cb => cb.value);
+
+    const inspection = {
+      id: inspectionId || null,
+      clientName,
+      contactNumber,
+      inspectionDate,
+      inspectedBy,
+      address,
+      pestProblems,
+      notes: document.getElementById('inspection-notes').value.trim(),
+      status: inspectionId ? (await DB.getInspectionById(inspectionId))?.status || 'Pending' : 'Pending'
+    };
+
+    // Only set createdAt for new inspections
+    if (!inspectionId) {
+      inspection.createdAt = new Date().toISOString();
     }
 
-    this.showLoading();
-    try {
-      const inspectionId = document.getElementById('inspection-id').value;
-      const pestProblems = Array.from(document.querySelectorAll('#inspection-pest-checkboxes input:checked')).map(cb => cb.value);
+    await DB.saveInspection(inspection);
 
-      const inspection = {
-        id: inspectionId || null,
-        clientName,
-        contactNumber,
-        inspectionDate,
-        inspectedBy,
-        address,
-        pestProblems,
-        notes: document.getElementById('inspection-notes').value.trim(),
-        status: inspectionId ? (await DB.getInspectionById(inspectionId))?.status || 'Pending' : 'Pending',
-        createdAt: inspectionId ? undefined : new Date().toISOString()
-      };
-
-      await DB.saveInspection(inspection);
-
-      this.closeInspectionModal();
-      this.showToast(inspectionId ? 'Inspection updated' : 'Inspection created');
-      this.renderInspectionsPage();
-    } catch (error) {
-      this.showToast('Error saving inspection: ' + error.message, 'error');
-    } finally {
-      this.hideLoading();
-    }
-  },
+    this.closeInspectionModal();
+    this.showToast(inspectionId ? 'Inspection updated' : 'Inspection created');
+    this.renderInspectionsPage();
+  } catch (error) {
+    this.showToast('Error saving inspection: ' + error.message, 'error');
+  } finally {
+    this.hideLoading();
+  }
+}
 
   async convertInspection(inspectionId) {
     this.showToast('Convert inspection - redirecting to new contract form', 'info');
