@@ -2255,7 +2255,6 @@ const UI = {
       const statusFilter = document.getElementById('complaints-status-filter')?.value || '';
 
       let complaints = await DB.getComplaints();
-      const teams = await DB.getTeams();
 
       // Enrich with client names
       const enrichedComplaints = await Promise.all(complaints.map(async c => {
@@ -2292,8 +2291,6 @@ const UI = {
         tbody.innerHTML = filtered.map(c => {
           const priorityClass = c.priorityLevel === 'High' ? 'badge-danger' : c.priorityLevel === 'Medium' ? 'badge-warning' : 'badge-info';
           const statusClass = c.status === 'Completed' ? 'badge-success' : c.status === 'In Progress' ? 'badge-info' : 'badge-warning';
-          const team = teams.find(t => t.id === c.assignedTo);
-          const assignedToDisplay = team ? team.name : (c.assignedTo || '-');
           return `
             <tr>
               <td>${Validation.formatDate(c.dateReported)}</td>
@@ -2301,7 +2298,7 @@ const UI = {
               <td class="truncate">${c.description || '-'}</td>
               <td><span class="badge ${priorityClass}">${c.priorityLevel}</span></td>
               <td><span class="badge ${statusClass}">${c.status}</span></td>
-              <td>${assignedToDisplay}</td>
+              <td>${c.assignedTo || '-'}</td>
               <td class="actions-cell">
                 <button class="btn btn-sm btn-outline" onclick="UI.editComplaint('${c.id}')" title="Edit">✏️</button>
                 ${c.status !== 'Completed' ? `<button class="btn btn-sm btn-success" onclick="UI.completeComplaint('${c.id}')" title="Complete">✓</button>` : ''}
