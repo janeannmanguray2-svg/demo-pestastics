@@ -1661,7 +1661,6 @@ const UI = {
               <td><span class="badge ${statusClass}">${p.status}</span></td>
               <td>${p.receivedBy || '-'}</td>
               <td class="actions-cell">
-                <button class="btn btn-sm btn-outline" onclick="UI.editPayment('${p.id}')" title="Edit">✏️</button>
                 <button class="btn btn-sm btn-danger" onclick="UI.deletePayment('${p.id}')" title="Delete">🗑️</button>
               </td>
             </tr>
