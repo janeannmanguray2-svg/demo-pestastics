@@ -1,4 +1,4 @@
-OLD 
+// UPDATED VERSION - Bug fixes applied 
 
 // ============= PESTASTIC - Contract Management System =============
 // Firebase Configuration
@@ -1415,16 +1415,16 @@ const UI = {
   async viewContractDetail(contractId) {
     this.showLoading();
     try {
-      const contract = await DB.getContract(contractId);
+      const contract = await DB.getContractById(contractId);
       if (!contract) {
         this.showToast('Contract not found', 'error');
         return;
       }
 
       const client = await DB.getClientByCustomerNo(contract.customerNo);
-      const treatments = await DB.getTreatmentsByContract(contractId);
-      const payments = await DB.getPaymentsByContract(contractId);
-
+      const treatments = await DB.getTreatmentsByContractId(contractId);
+      const payments = await DB.getPaymentsByContractId(contractId);
+      const teams = await DB.getTeams();
       // Calculate payment totals
       const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
       const balance = parseFloat(contract.totalAmount || 0) - totalPaid;
@@ -1543,16 +1543,22 @@ const UI = {
                 <tbody>
                   ${treatments.length === 0 ? 
                     '<tr><td colspan="6" class="text-center text-muted">No treatments scheduled</td></tr>' :
-                    treatments.map((t, idx) => `
-                      <tr>
-                        <td>${idx + 1}</td>
-                        <td>${Validation.formatDate(t.treatmentDate)}</td>
-                        <td>${t.treatmentType}</td>
-                        <td><span class="badge badge-${t.status}">${t.status}</span></td>
-                        <td>${t.teamName || '-'}</td>
-                        <td>${t.timeSlot || '-'}</td>
-                      </tr>
-                    `).join('')
+                    treatments.map((t, idx) => {
+                      const status = DB.getTreatmentStatus(t);
+                      const statusClass = status === 'Completed' ? 'badge-success' : status === 'Lapsed' ? 'badge-danger' : status === 'Cancelled' ? 'badge-muted' : 'badge-info';
+                      const team = teams.find(team => team.id === t.teamId);
+                      const teamName = team ? team.name : (t.teamId || '-');
+                      return `
+                        <tr>
+                          <td>${t.treatmentNo || (idx + 1)}</td>
+                          <td>${Validation.formatDate(t.dateScheduled)}</td>
+                          <td>${t.treatmentType || '-'}</td>
+                          <td><span class="badge ${statusClass}">${status}</span></td>
+                          <td>${teamName}</td>
+                          <td>${t.timeSlot || '-'}</td>
+                        </tr>
+                      `;
+                    }).join('')
                   }
                 </tbody>
               </table>
@@ -2389,9 +2395,13 @@ const UI = {
         priorityLevel: document.getElementById('complaint-priority').value,
         assignedTo: document.getElementById('complaint-assigned').value,
         resolutionNotes: document.getElementById('complaint-resolution').value.trim(),
-        status: complaintId ? (await DB.getComplaintById(complaintId))?.status || 'Open' : 'Open',
-        createdAt: complaintId ? undefined : new Date().toISOString()
+        status: complaintId ? (await DB.getComplaintById(complaintId))?.status || 'Open' : 'Open'
       };
+
+      // Only set createdAt for new complaints
+      if (!complaintId) {
+        complaint.createdAt = new Date().toISOString();
+      }
 
       await DB.saveComplaint(complaint);
 
@@ -2615,9 +2625,13 @@ const UI = {
         address,
         pestProblems,
         notes: document.getElementById('inspection-notes').value.trim(),
-        status: inspectionId ? (await DB.getInspectionById(inspectionId))?.status || 'Pending' : 'Pending',
-        createdAt: inspectionId ? undefined : new Date().toISOString()
+        status: inspectionId ? (await DB.getInspectionById(inspectionId))?.status || 'Pending' : 'Pending'
       };
+
+      // Only set createdAt for new inspections
+      if (!inspectionId) {
+        inspection.createdAt = new Date().toISOString();
+      }
 
       await DB.saveInspection(inspection);
 
@@ -2955,7 +2969,7 @@ const UI = {
     }
   },
 
-  generateTreatments() {
+  async generateTreatments() {
     const startDate = document.getElementById('contract-start').value;
     const months = document.getElementById('contract-length').value;
     const frequency = document.getElementById('treatment-frequency').value;
@@ -2970,13 +2984,18 @@ const UI = {
 
     this.generatedTreatments = DB.generateTreatmentSchedule('temp', 'temp', startDate, months, frequency, treatmentType, teamId, timeSlot);
 
+    // Get teams for name display
+    const teams = await DB.getTeams();
+    const assignedTeam = teams.find(t => t.id === teamId);
+    const teamName = assignedTeam ? assignedTeam.name : (teamId || '-');
+
     const tbody = document.getElementById('treatment-table-body');
     tbody.innerHTML = this.generatedTreatments.map((t, i) => `
       <tr>
         <td>${t.treatmentNo}</td>
         <td>${Validation.formatDate(t.dateScheduled)}</td>
         <td>${t.timeSlot || '-'}</td>
-        <td>${t.teamId || '-'}</td>
+        <td>${teamName}</td>
         <td><span class="badge badge-info">Scheduled</span></td>
       </tr>
     `).join('');
