@@ -1410,202 +1410,198 @@ const UI = {
     }
   },
 
-async viewContractDetail(contractId) {
-  this.showLoading();
-  try {
-    const contract = await DB.getContractById(contractId); // FIXED: was DB.getContract
-    if (!contract) {
-      this.showToast('Contract not found', 'error');
-      return;
-    }
+  async viewContractDetail(contractId) {
+    this.showLoading();
+    try {
+      const contract = await DB.getContract(contractId);
+      if (!contract) {
+        this.showToast('Contract not found', 'error');
+        return;
+      }
 
-    const client = await DB.getClientByCustomerNo(contract.customerNo);
-    const treatments = await DB.getTreatmentsByContractId(contractId); // FIXED: was getTreatmentsByContract
-    const payments = await DB.getPaymentsByContractId(contractId); // FIXED: was getPaymentsByContract
+      const client = await DB.getClientByCustomerNo(contract.customerNo);
+      const treatments = await DB.getTreatmentsByContract(contractId);
+      const payments = await DB.getPaymentsByContract(contractId);
 
-    // Calculate payment totals
-    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-    const balance = parseFloat(contract.totalAmount || 0) - totalPaid;
+      // Calculate payment totals
+      const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+      const balance = parseFloat(contract.totalAmount || 0) - totalPaid;
 
-    // Generate HTML content
-    const content = `
-      <div class="contract-detail-grid">
-        <!-- Client Information -->
-        <div class="detail-section">
-          <h4 class="detail-section-title">Client Information</h4>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-label">Customer No:</span>
-              <span class="detail-value">${contract.customerNo}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Client Name:</span>
-              <span class="detail-value">${client?.clientName || '-'}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Contact Person:</span>
-              <span class="detail-value">${client?.contactPerson || '-'}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Contact Number:</span>
-              <span class="detail-value">${client?.contactNumber || '-'}</span>
-            </div>
-            <div class="detail-item full-width">
-              <span class="detail-label">Address:</span>
-              <span class="detail-value">${client?.address || '-'}</span>
+      // Generate HTML content
+      const content = `
+        <div class="contract-detail-grid">
+          <!-- Client Information -->
+          <div class="detail-section">
+            <h4 class="detail-section-title">Client Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Customer No:</span>
+                <span class="detail-value">${contract.customerNo}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Client Name:</span>
+                <span class="detail-value">${client?.clientName || '-'}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Contact Person:</span>
+                <span class="detail-value">${client?.contactPerson || '-'}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Contact Number:</span>
+                <span class="detail-value">${client?.contactNumber || '-'}</span>
+              </div>
+              <div class="detail-item full-width">
+                <span class="detail-label">Address:</span>
+                <span class="detail-value">${client?.address || '-'}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Contract Information -->
-        <div class="detail-section">
-          <h4 class="detail-section-title">Contract Information</h4>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-label">Contract No:</span>
-              <span class="detail-value">#${contract.contractNumber}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Status:</span>
-              <span class="badge badge-${contract.status === 'active' ? 'success' : 'muted'}">${contract.status}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Treatment Method:</span>
-              <span class="detail-value">${contract.treatmentMethod}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Frequency:</span>
-              <span class="detail-value">${contract.treatmentFrequency}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Start Date:</span>
-              <span class="detail-value">${Validation.formatDate(contract.contractStartDate)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">End Date:</span>
-              <span class="detail-value">${Validation.formatDate(contract.contractEndDate)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Contract Length:</span>
-              <span class="detail-value">${contract.contractLength} months</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Warranty:</span>
-              <span class="detail-value">${contract.warrantyYears} year(s)</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Sales Agent:</span>
-              <span class="detail-value">${contract.salesAgent || '-'}</span>
+          <!-- Contract Information -->
+          <div class="detail-section">
+            <h4 class="detail-section-title">Contract Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Contract No:</span>
+                <span class="detail-value">#${contract.contractNumber}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Status:</span>
+                <span class="badge badge-${contract.status}">${contract.status}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Treatment Method:</span>
+                <span class="detail-value">${contract.treatmentMethod}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Frequency:</span>
+                <span class="detail-value">${contract.treatmentFrequency}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Start Date:</span>
+                <span class="detail-value">${Validation.formatDate(contract.contractStartDate)}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">End Date:</span>
+                <span class="detail-value">${Validation.formatDate(contract.contractEndDate)}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Contract Length:</span>
+                <span class="detail-value">${contract.contractLength} months</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Warranty:</span>
+                <span class="detail-value">${contract.warrantyYears} year(s)</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Sales Agent:</span>
+                <span class="detail-value">${contract.salesAgent || '-'}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Financial Information -->
-        <div class="detail-section">
-          <h4 class="detail-section-title">Financial Information</h4>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-label">Total Amount:</span>
-              <span class="detail-value text-bold">${Validation.formatCurrency(contract.totalAmount)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Downpayment:</span>
-              <span class="detail-value">${Validation.formatCurrency(contract.downpaymentAmount)} (${contract.downpaymentPercent}%)</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Total Paid:</span>
-              <span class="detail-value text-success">${Validation.formatCurrency(totalPaid)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Balance:</span>
-              <span class="detail-value ${balance > 0 ? 'text-danger' : 'text-success'}">${Validation.formatCurrency(balance)}</span>
+          <!-- Financial Information -->
+          <div class="detail-section">
+            <h4 class="detail-section-title">Financial Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Total Amount:</span>
+                <span class="detail-value text-bold">${Validation.formatCurrency(contract.totalAmount)}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Downpayment:</span>
+                <span class="detail-value">${Validation.formatCurrency(contract.downpaymentAmount)} (${contract.downpaymentPercent}%)</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Total Paid:</span>
+                <span class="detail-value text-success">${Validation.formatCurrency(totalPaid)}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Balance:</span>
+                <span class="detail-value ${balance > 0 ? 'text-danger' : 'text-success'}">${Validation.formatCurrency(balance)}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Treatments Schedule -->
-        <div class="detail-section full-width">
-          <h4 class="detail-section-title">Treatment Schedule (${treatments.length} treatments)</h4>
-          <div class="table-container">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Date</th>
-                  <th>Treatment Type</th>
-                  <th>Status</th>
-                  <th>Team</th>
-                  <th>Time Slot</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${treatments.length === 0 ? 
-                  '<tr><td colspan="6" class="text-center text-muted">No treatments scheduled</td></tr>' :
-                  treatments.map((t) => {
-                    const status = DB.getTreatmentStatus(t);
-                    const statusClass = status === 'Completed' ? 'success' : status === 'Lapsed' ? 'danger' : status === 'Cancelled' ? 'muted' : 'info';
-                    return `
+          <!-- Treatments Schedule -->
+          <div class="detail-section full-width">
+            <h4 class="detail-section-title">Treatment Schedule (${treatments.length} treatments)</h4>
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Treatment Type</th>
+                    <th>Status</th>
+                    <th>Team</th>
+                    <th>Time Slot</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${treatments.length === 0 ? 
+                    '<tr><td colspan="6" class="text-center text-muted">No treatments scheduled</td></tr>' :
+                    treatments.map((t, idx) => `
                       <tr>
-                        <td>${t.treatmentNo}</td>
-                        <td>${Validation.formatDate(t.dateScheduled)}</td>
+                        <td>${idx + 1}</td>
+                        <td>${Validation.formatDate(t.treatmentDate)}</td>
                         <td>${t.treatmentType}</td>
-                        <td><span class="badge badge-${statusClass}">${status}</span></td>
-                        <td>${t.teamId || '-'}</td>
+                        <td><span class="badge badge-${t.status}">${t.status}</span></td>
+                        <td>${t.teamName || '-'}</td>
                         <td>${t.timeSlot || '-'}</td>
                       </tr>
-                    `;
-                  }).join('')
-                }
-              </tbody>
-            </table>
+                    `).join('')
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Payment History -->
+          <div class="detail-section full-width">
+            <h4 class="detail-section-title">Payment History (${payments.length} payments)</h4>
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>OR Number</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Type</th>
+                    <th>Received By</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${payments.length === 0 ? 
+                    '<tr><td colspan="6" class="text-center text-muted">No payments recorded</td></tr>' :
+                    payments.map(p => `
+                      <tr>
+                        <td>${p.orNumber}</td>
+                        <td>${Validation.formatDate(p.paymentDate)}</td>
+                        <td class="text-bold">${Validation.formatCurrency(p.amount)}</td>
+                        <td>${p.paymentType}</td>
+                        <td>${p.receivedBy}</td>
+                        <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                      </tr>
+                    `).join('')
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+      `;
 
-        <!-- Payment History -->
-        <div class="detail-section full-width">
-          <h4 class="detail-section-title">Payment History (${payments.length} payments)</h4>
-          <div class="table-container">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>OR Number</th>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Type</th>
-                  <th>Received By</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${payments.length === 0 ? 
-                  '<tr><td colspan="6" class="text-center text-muted">No payments recorded</td></tr>' :
-                  payments.map(p => `
-                    <tr>
-                      <td>${p.orNumber}</td>
-                      <td>${Validation.formatDate(p.paymentDate)}</td>
-                      <td class="text-bold">${Validation.formatCurrency(p.amount)}</td>
-                      <td>${p.paymentType}</td>
-                      <td>${p.receivedBy}</td>
-                      <td><span class="badge badge-${p.status === 'Deposited' ? 'success' : p.status === 'Remitted' ? 'info' : 'warning'}">${p.status}</span></td>
-                    </tr>
-                  `).join('')
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.getElementById('contract-detail-content').innerHTML = content;
-    document.getElementById('contract-detail-modal').classList.remove('hidden');
-  } catch (error) {
-    console.error('Error loading contract details:', error);
-    this.showToast('Error loading contract details', 'error');
-  } finally {
-    this.hideLoading();
-  }
-},
+      document.getElementById('contract-detail-content').innerHTML = content;
+      document.getElementById('contract-detail-modal').classList.remove('hidden');
+    } catch (error) {
+      console.error('Error loading contract details:', error);
+      this.showToast('Error loading contract details', 'error');
+    } finally {
+      this.hideLoading();
+    }
+  },
 
   closeContractDetailModal() {
     document.getElementById('contract-detail-modal').classList.add('hidden');
@@ -3106,144 +3102,118 @@ document.addEventListener('DOMContentLoaded', () => {
     UI.generatedTreatments = [];
   });
 
-// Contract form submission
-document.getElementById('contract-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  // Validate required fields
-  const clientName = document.getElementById('client-name').value.trim();
-  const contactPerson = document.getElementById('contact-person').value.trim();
-  const contactNumber = document.getElementById('contact-number').value.trim();
-  const address = document.getElementById('address').value.trim();
-  const treatmentMethod = document.getElementById('treatment-method').value;
-  const contractLength = document.getElementById('contract-length').value;
-  const contractStart = document.getElementById('contract-start').value;
-  const treatmentFrequency = document.getElementById('treatment-frequency').value;
-  const totalAmount = document.getElementById('total-amount').value;
-  const salesAgent = document.getElementById('sales-agent').value;
+  // Contract form submission
+  document.getElementById('contract-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    const clientName = document.getElementById('client-name').value.trim();
+    const contactPerson = document.getElementById('contact-person').value.trim();
+    const contactNumber = document.getElementById('contact-number').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const treatmentMethod = document.getElementById('treatment-method').value;
+    const contractLength = document.getElementById('contract-length').value;
+    const contractStart = document.getElementById('contract-start').value;
+    const treatmentFrequency = document.getElementById('treatment-frequency').value;
+    const totalAmount = document.getElementById('total-amount').value;
+    const salesAgent = document.getElementById('sales-agent').value;
 
-  if (!clientName || !contactPerson || !contactNumber || !address || !treatmentMethod || !contractLength || !contractStart || !treatmentFrequency || !totalAmount || !salesAgent) {
-    UI.showToast('Please fill in all required fields', 'error');
-    return;
-  }
+    if (!clientName || !contactPerson || !contactNumber || !address || !treatmentMethod || !contractLength || !contractStart || !treatmentFrequency || !totalAmount || !salesAgent) {
+      UI.showToast('Please fill in all required fields', 'error');
+      return;
+    }
 
-  if (UI.generatedTreatments.length === 0) {
-    UI.showToast('Please generate treatment plan before saving', 'error');
-    return;
-  }
+    if (UI.generatedTreatments.length === 0) {
+      UI.showToast('Please generate treatment plan before saving', 'error');
+      return;
+    }
 
-  UI.showLoading();
-  try {
-    const clientType = document.getElementById('client-type').value;
-    let customerNo;
-    let client;
+    UI.showLoading();
+    try {
+      const clientType = document.getElementById('client-type').value;
+      let customerNo;
+      let client;
 
-    if (clientType === 'existing') {
-      customerNo = document.getElementById('existing-client-select').value;
-      client = await DB.getClientByCustomerNo(customerNo);
-    } else {
-      customerNo = await DB.generateCustomerNo();
-      
-      // Get pest problems
-      const pests = Array.from(document.querySelectorAll('#pest-checkboxes input:checked')).map(cb => cb.value);
+      if (clientType === 'existing') {
+        customerNo = document.getElementById('existing-client-select').value;
+        client = await DB.getClientByCustomerNo(customerNo);
+      } else {
+        customerNo = await DB.generateCustomerNo();
+        
+        // Get pest problems
+        const pests = Array.from(document.querySelectorAll('#pest-checkboxes input:checked')).map(cb => cb.value);
 
-      client = {
+        client = {
+          customerNo,
+          clientName,
+          contactPerson,
+          contactNumber,
+          address,
+          areaSize: document.getElementById('area-size').value,
+          email: document.getElementById('email').value,
+          source: document.getElementById('source').value,
+          salesAgent,
+          pestProblems: pests,
+          createdAt: new Date().toISOString()
+        };
+
+        await DB.saveClient(client);
+      }
+
+      // Get next contract number
+      const contractNumber = await DB.getNextContractNumber(customerNo);
+
+      // Create contract
+      const contract = {
         customerNo,
-        clientName,
-        contactPerson,
-        contactNumber,
-        address,
-        areaSize: document.getElementById('area-size').value,
-        email: document.getElementById('email').value,
-        source: document.getElementById('source').value,
+        contractNumber,
+        contractStartDate: contractStart,
+        contractEndDate: DB.calculateEndDate(contractStart, contractLength),
+        contractLength: parseInt(contractLength),
+        treatmentMethod,
+        treatmentFrequency,
+        totalAmount: parseFloat(totalAmount),
+        downpaymentPercent: parseInt(document.getElementById('downpayment-percent').value),
+        downpaymentAmount: parseFloat(document.getElementById('downpayment-amount').value) || 0,
+        warrantyYears: parseInt(document.getElementById('warranty-years').value) || 1,
         salesAgent,
-        pestProblems: pests,
+        status: 'active',
         createdAt: new Date().toISOString()
       };
 
-      await DB.saveClient(client);
-    }
+      const savedContract = await DB.saveContract(contract);
 
-    // Get next contract number
-    const contractNumber = await DB.getNextContractNumber(customerNo);
-    const downpaymentAmount = parseFloat(document.getElementById('downpayment-amount').value) || 0;
-
-    // Create contract
-    const contract = {
-      customerNo,
-      contractNumber,
-      contractStartDate: contractStart,
-      contractEndDate: DB.calculateEndDate(contractStart, contractLength),
-      contractLength: parseInt(contractLength),
-      treatmentMethod,
-      treatmentFrequency,
-      totalAmount: parseFloat(totalAmount),
-      downpaymentPercent: parseInt(document.getElementById('downpayment-percent').value),
-      downpaymentAmount: downpaymentAmount,
-      warrantyYears: parseInt(document.getElementById('warranty-years').value) || 1,
-      salesAgent,
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-
-    const savedContract = await DB.saveContract(contract);
-
-    // Update and save treatments
-    const treatments = UI.generatedTreatments.map(t => ({
-      ...t,
-      id: DB.generateId(),
-      contractId: savedContract.id,
-      customerNo
-    }));
-
-    await DB.saveTreatments(treatments);
-
-    // **NEW: Record downpayment if amount > 0**
-    if (downpaymentAmount > 0) {
-      const downpayment = {
+      // Update and save treatments
+      const treatments = UI.generatedTreatments.map(t => ({
+        ...t,
+        id: DB.generateId(),
         contractId: savedContract.id,
-        customerNo: customerNo,
-        orNumber: `DP-${customerNo}-${contractNumber}`,
-        amount: downpaymentAmount,
-        paymentDate: contractStart,
-        paymentType: 'Downpayment',
-        status: 'Received',
-        receivedBy: Auth.getCurrentUserName(),
-        serviceRendered: `Downpayment for Contract #${contractNumber}`,
-        notes: 'Auto-generated from contract creation'
-      };
-      
-      await DB.savePayment(downpayment);
-      
+        customerNo
+      }));
+
+      await DB.saveTreatments(treatments);
+
+      // Log creation
       await DB.saveContractUpdate({
         customerNo,
-        changeType: 'Payment Recorded',
+        changeType: 'Contract Created',
         oldValue: '-',
-        newValue: `${Validation.formatCurrency(downpaymentAmount)} (Downpayment)`,
-        reason: 'Contract creation'
+        newValue: `Contract #${contractNumber}`,
+        reason: `${treatmentMethod} - ${Validation.formatCurrency(totalAmount)}`
       });
+
+      // Reset form
+      document.getElementById('contract-form').reset();
+      document.getElementById('treatment-table-container').classList.add('hidden');
+      UI.generatedTreatments = [];
+
+      UI.showToast('Contract created successfully!');
+      UI.switchTab('contracts');
+    } catch (error) {
+      console.error('Error saving contract:', error);
+      UI.showToast('Error creating contract: ' + error.message, 'error');
+    } finally {
+      UI.hideLoading();
     }
-
-    // Log creation
-    await DB.saveContractUpdate({
-      customerNo,
-      changeType: 'Contract Created',
-      oldValue: '-',
-      newValue: `Contract #${contractNumber}`,
-      reason: `${treatmentMethod} - ${Validation.formatCurrency(totalAmount)}`
-    });
-
-    // Reset form
-    document.getElementById('contract-form').reset();
-    document.getElementById('treatment-table-container').classList.add('hidden');
-    UI.generatedTreatments = [];
-
-    UI.showToast('Contract created successfully!');
-    UI.switchTab('contracts');
-  } catch (error) {
-    console.error('Error saving contract:', error);
-    UI.showToast('Error creating contract: ' + error.message, 'error');
-  } finally {
-    UI.hideLoading();
-  }
+  });
 });
