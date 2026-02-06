@@ -2512,6 +2512,7 @@ const UI = {
     this.showLoading();
     try {
       let inspections = await DB.getInspections();
+      const teams = await DB.getTeams();
       inspections = inspections.sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate));
 
       document.getElementById('inspections-count').textContent = `${inspections.length} inspections`;
@@ -2522,13 +2523,16 @@ const UI = {
       } else {
         tbody.innerHTML = inspections.map(i => {
           const statusClass = i.status === 'Converted' ? 'badge-success' : i.status === 'Completed' ? 'badge-info' : i.status === 'Lost' ? 'badge-danger' : 'badge-warning';
+          // Look up team name for inspectedBy field
+          const team = teams.find(t => t.id === i.inspectedBy);
+          const inspectedByDisplay = team ? team.name : (i.inspectedBy || '-');
           return `
             <tr>
               <td>${Validation.formatDate(i.inspectionDate)}</td>
               <td>${i.clientName}</td>
               <td>${i.contactNumber || '-'}</td>
               <td class="truncate">${i.address || '-'}</td>
-              <td>${i.inspectedBy || '-'}</td>
+              <td>${inspectedByDisplay}</td>
               <td>${Array.isArray(i.pestProblems) ? i.pestProblems.join(', ') : i.pestProblems || '-'}</td>
               <td><span class="badge ${statusClass}">${i.status}</span></td>
               <td>${i.conversionDate ? Validation.formatDate(i.conversionDate) : '-'}</td>
