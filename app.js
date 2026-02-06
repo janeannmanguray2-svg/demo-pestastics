@@ -628,13 +628,7 @@ const DB = {
         complaint.id = this.generateId();
       }
       complaint.updatedAt = new Date().toISOString();
-      // Ensure createdAt is set
-      if (!complaint.createdAt) {
-        complaint.createdAt = new Date().toISOString();
-      }
-      // Clean object to remove any undefined values before saving
-      const clean = this._cleanForFirebase(complaint);
-      await database.ref(`complaints/${complaint.id}`).set(clean);
+      await database.ref(`complaints/${complaint.id}`).set(complaint);
       return complaint;
     } catch (error) {
       console.error('Error saving complaint:', error);
@@ -1419,17 +1413,15 @@ const UI = {
 async viewContractDetail(contractId) {
   this.showLoading();
   try {
-    const contract = await DB.getContractById(contractId);
+    const contract = await DB.getContractById(contractId); // FIXED: was DB.getContract
     if (!contract) {
       this.showToast('Contract not found', 'error');
-      this.hideLoading();
       return;
     }
 
     const client = await DB.getClientByCustomerNo(contract.customerNo);
-    const treatments = await DB.getTreatmentsByContractId(contractId);
-    const payments = await DB.getPaymentsByContractId(contractId);
-    const teams = await DB.getTeams(); // Fetch teams for name lookup
+    const treatments = await DB.getTreatmentsByContractId(contractId); // FIXED: was getTreatmentsByContract
+    const payments = await DB.getPaymentsByContractId(contractId); // FIXED: was getPaymentsByContract
 
     // Calculate payment totals
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
@@ -1552,15 +1544,13 @@ async viewContractDetail(contractId) {
                   treatments.map((t) => {
                     const status = DB.getTreatmentStatus(t);
                     const statusClass = status === 'Completed' ? 'success' : status === 'Lapsed' ? 'danger' : status === 'Cancelled' ? 'muted' : 'info';
-                    const team = teams.find(team => team.id === t.teamId);
-                    const teamDisplay = team ? team.name : (t.teamId || '-');
                     return `
                       <tr>
                         <td>${t.treatmentNo}</td>
                         <td>${Validation.formatDate(t.dateScheduled)}</td>
                         <td>${t.treatmentType}</td>
                         <td><span class="badge badge-${statusClass}">${status}</span></td>
-                        <td>${teamDisplay}</td>
+                        <td>${t.teamId || '-'}</td>
                         <td>${t.timeSlot || '-'}</td>
                       </tr>
                     `;
@@ -2394,12 +2384,6 @@ async viewContractDetail(contractId) {
     try {
       const complaintId = document.getElementById('complaint-id').value;
 
-      // Fetch existing complaint to preserve createdAt
-      let existingComplaint = null;
-      if (complaintId) {
-        existingComplaint = await DB.getComplaintById(complaintId);
-      }
-
       const complaint = {
         id: complaintId || null,
         customerNo,
@@ -2408,8 +2392,8 @@ async viewContractDetail(contractId) {
         priorityLevel: document.getElementById('complaint-priority').value,
         assignedTo: document.getElementById('complaint-assigned').value,
         resolutionNotes: document.getElementById('complaint-resolution').value.trim(),
-        status: complaintId ? (existingComplaint?.status || 'Open') : 'Open',
-        createdAt: complaintId ? (existingComplaint?.createdAt || new Date().toISOString()) : new Date().toISOString()
+        status: complaintId ? (await DB.getComplaintById(complaintId))?.status || 'Open' : 'Open',
+        createdAt: complaintId ? undefined : new Date().toISOString()
       };
 
       await DB.saveComplaint(complaint);
