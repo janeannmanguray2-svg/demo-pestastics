@@ -2892,14 +2892,23 @@ const UI = {
 
   // ===== USERS =====
   async renderUsersPage() {
+    console.log('renderUsersPage called, Auth.currentUserData:', Auth.currentUserData);
+    console.log('isAdmin check result:', Auth.isAdmin());
+    
     if (!Auth.isAdmin()) {
-      this.showToast('Access denied', 'error');
+      this.showToast('Access denied. You need admin or super_admin role.', 'error');
       return;
     }
     this.showLoading();
     try {
       const users = await DB.getUsers();
+      console.log('Users fetched:', users);
       const tbody = document.getElementById('users-table-body');
+
+      if (!tbody) {
+        console.error('users-table-body element not found');
+        return;
+      }
 
       if (users.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><p>No users found</p></td></tr>`;
