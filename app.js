@@ -1413,15 +1413,16 @@ const UI = {
 async viewContractDetail(contractId) {
   this.showLoading();
   try {
-    const contract = await DB.getContractById(contractId); // FIXED: was DB.getContract
+    const contract = await DB.getContractById(contractId);
     if (!contract) {
       this.showToast('Contract not found', 'error');
       return;
     }
 
     const client = await DB.getClientByCustomerNo(contract.customerNo);
-    const treatments = await DB.getTreatmentsByContractId(contractId); // FIXED: was getTreatmentsByContract
-    const payments = await DB.getPaymentsByContractId(contractId); // FIXED: was getPaymentsByContract
+    const treatments = await DB.getTreatmentsByContractId(contractId);
+    const payments = await DB.getPaymentsByContractId(contractId);
+    const teams = await DB.getTeams(); // ADDED: Load teams
 
     // Calculate payment totals
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
@@ -1544,13 +1545,16 @@ async viewContractDetail(contractId) {
                   treatments.map((t) => {
                     const status = DB.getTreatmentStatus(t);
                     const statusClass = status === 'Completed' ? 'success' : status === 'Lapsed' ? 'danger' : status === 'Cancelled' ? 'muted' : 'info';
+                    const team = teams.find(tm => tm.id === t.teamId);
+                    const teamName = team?.name || t.teamId || '-';
+                    
                     return `
                       <tr>
                         <td>${t.treatmentNo}</td>
                         <td>${Validation.formatDate(t.dateScheduled)}</td>
                         <td>${t.treatmentType}</td>
                         <td><span class="badge badge-${statusClass}">${status}</span></td>
-                        <td>${t.teamId || '-'}</td>
+                        <td>${teamName}</td>
                         <td>${t.timeSlot || '-'}</td>
                       </tr>
                     `;
@@ -1601,12 +1605,11 @@ async viewContractDetail(contractId) {
     document.getElementById('contract-detail-modal').classList.remove('hidden');
   } catch (error) {
     console.error('Error loading contract details:', error);
-    this.showToast('Error loading contract details', 'error');
+    this.showToast('Error loading contract details: ' + error.message, 'error');
   } finally {
     this.hideLoading();
   }
 },
-
   closeContractDetailModal() {
     document.getElementById('contract-detail-modal').classList.add('hidden');
   },
@@ -2243,75 +2246,127 @@ async viewContractDetail(contractId) {
     }
   },
 
-  // ===== COMPLAINTS =====
-  async renderComplaintsPage() {
-    this.showLoading();
-    try {
-      const searchTerm = document.getElementById('complaints-search')?.value || '';
-      const priorityFilter = document.getElementById('complaints-priority-filter')?.value || '';
-      const statusFilter = document.getElementById('complaints-status-filter')?.value || '';
+// ===== COMPLAINTS PAGE - FIXED =====
+async renderComplaintsPage() {
+  this.showLoading();
+  try {
+    const searchTerm = document.getElementById('complaints-search')?.value || '';
+    const priorityFilter = document.getElementById('complaints-priority-filter')?.value || '';
+    const statusFilter = document.getElementById('complaints-status-filter')?.value || '';
 
-      let complaints = await DB.getComplaints();
+    let complaints = await DB.getComplaints();
+    const teams = await DB.getTeams(); // ADDED: Load teams
 
-      // Enrich with client names
-      const enrichedComplaints = await Promise.all(complaints.map(async c => {
-        const client = await DB.getClientByCustomerNo(c.customerNo);
-        return { ...c, clientName: client?.clientName || 'Unknown' };
-      }));
+    // Enrich with client names and team names
+    const enrichedComplaints = await Promise.all(complaints.map(async c => {
+      const client = await DB.getClientByCustomerNo(c.customerNo);
+      const team = teams.find(t => t.id === c.assignedTo);
+      return { 
+        ...c, 
+        clientName: client?.clientName || 'Unknown',
+        assignedToName: team?.name || c.assignedTo || '-' // ADDED: Team name
+      };
+    }));
 
-      let filtered = enrichedComplaints;
+    let filtered = enrichedComplaints;
 
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(c => 
-          c.customerNo?.toLowerCase().includes(term) ||
-          c.description?.toLowerCase().includes(term)
-        );
-      }
-
-      if (priorityFilter) {
-        filtered = filtered.filter(c => c.priorityLevel === priorityFilter);
-      }
-
-      if (statusFilter) {
-        filtered = filtered.filter(c => c.status === statusFilter);
-      }
-
-      filtered = filtered.sort((a, b) => new Date(b.dateReported) - new Date(a.dateReported));
-
-      document.getElementById('complaints-count').textContent = `${filtered.length} complaints`;
-      const tbody = document.getElementById('complaints-table-body');
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><p>No complaints found</p></td></tr>`;
-      } else {
-        tbody.innerHTML = filtered.map(c => {
-          const priorityClass = c.priorityLevel === 'High' ? 'badge-danger' : c.priorityLevel === 'Medium' ? 'badge-warning' : 'badge-info';
-          const statusClass = c.status === 'Completed' ? 'badge-success' : c.status === 'In Progress' ? 'badge-info' : 'badge-warning';
-          return `
-            <tr>
-              <td>${Validation.formatDate(c.dateReported)}</td>
-              <td>${c.clientName}</td>
-              <td class="truncate">${c.description || '-'}</td>
-              <td><span class="badge ${priorityClass}">${c.priorityLevel}</span></td>
-              <td><span class="badge ${statusClass}">${c.status}</span></td>
-              <td>${c.assignedTo || '-'}</td>
-              <td class="actions-cell">
-                <button class="btn btn-sm btn-outline" onclick="UI.editComplaint('${c.id}')" title="Edit">✏️</button>
-                ${c.status !== 'Completed' ? `<button class="btn btn-sm btn-success" onclick="UI.completeComplaint('${c.id}')" title="Complete">✓</button>` : ''}
-                <button class="btn btn-sm btn-danger" onclick="UI.deleteComplaint('${c.id}')" title="Delete">🗑️</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-    } catch (error) {
-      console.error('Error rendering complaints:', error);
-      this.showToast('Error loading complaints', 'error');
-    } finally {
-      this.hideLoading();
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.customerNo?.toLowerCase().includes(term) ||
+        c.description?.toLowerCase().includes(term)
+      );
     }
-  },
+
+    if (priorityFilter) {
+      filtered = filtered.filter(c => c.priorityLevel === priorityFilter);
+    }
+
+    if (statusFilter) {
+      filtered = filtered.filter(c => c.status === statusFilter);
+    }
+
+    filtered = filtered.sort((a, b) => new Date(b.dateReported) - new Date(a.dateReported));
+
+    document.getElementById('complaints-count').textContent = `${filtered.length} complaints`;
+    const tbody = document.getElementById('complaints-table-body');
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><p>No complaints found</p></td></tr>`;
+    } else {
+      tbody.innerHTML = filtered.map(c => {
+        const priorityClass = c.priorityLevel === 'High' ? 'badge-danger' : c.priorityLevel === 'Medium' ? 'badge-warning' : 'badge-info';
+        const statusClass = c.status === 'Completed' ? 'badge-success' : c.status === 'In Progress' ? 'badge-info' : 'badge-warning';
+        return `
+          <tr>
+            <td>${Validation.formatDate(c.dateReported)}</td>
+            <td>${c.clientName}</td>
+            <td class="truncate">${c.description || '-'}</td>
+            <td><span class="badge ${priorityClass}">${c.priorityLevel}</span></td>
+            <td><span class="badge ${statusClass}">${c.status}</span></td>
+            <td>${c.assignedToName}</td>
+            <td class="actions-cell">
+              <button class="btn btn-sm btn-outline" onclick="UI.editComplaint('${c.id}')" title="Edit">✏️</button>
+              ${c.status !== 'Completed' ? `<button class="btn btn-sm btn-success" onclick="UI.completeComplaint('${c.id}')" title="Complete">✓</button>` : ''}
+              <button class="btn btn-sm btn-danger" onclick="UI.deleteComplaint('${c.id}')" title="Delete">🗑️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  } catch (error) {
+    console.error('Error rendering complaints:', error);
+    this.showToast('Error loading complaints', 'error');
+  } finally {
+    this.hideLoading();
+  }
+},
+
+// ===== INSPECTIONS PAGE - FIXED =====
+async renderInspectionsPage() {
+  this.showLoading();
+  try {
+    let inspections = await DB.getInspections();
+    const teams = await DB.getTeams(); // ADDED: Load teams
+    
+    inspections = inspections.sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate));
+
+    document.getElementById('inspections-count').textContent = `${inspections.length} inspections`;
+    const tbody = document.getElementById('inspections-table-body');
+
+    if (inspections.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-state"><p>No inspections found</p></td></tr>`;
+    } else {
+      tbody.innerHTML = inspections.map(i => {
+        const statusClass = i.status === 'Converted' ? 'badge-success' : i.status === 'Completed' ? 'badge-info' : i.status === 'Lost' ? 'badge-danger' : 'badge-warning';
+        const team = teams.find(t => t.id === i.inspectedBy);
+        const inspectedByName = team?.name || i.inspectedBy || '-'; // ADDED: Team name
+        
+        return `
+          <tr>
+            <td>${Validation.formatDate(i.inspectionDate)}</td>
+            <td>${i.clientName}</td>
+            <td>${i.contactNumber || '-'}</td>
+            <td class="truncate">${i.address || '-'}</td>
+            <td>${inspectedByName}</td>
+            <td>${Array.isArray(i.pestProblems) ? i.pestProblems.join(', ') : i.pestProblems || '-'}</td>
+            <td><span class="badge ${statusClass}">${i.status}</span></td>
+            <td>${i.conversionDate ? Validation.formatDate(i.conversionDate) : '-'}</td>
+            <td class="actions-cell">
+              <button class="btn btn-sm btn-outline" onclick="UI.editInspection('${i.id}')" title="Edit">✏️</button>
+              ${i.status !== 'Converted' ? `<button class="btn btn-sm btn-success" onclick="UI.convertInspection('${i.id}')" title="Convert">💼</button>` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  } catch (error) {
+    console.error('Error rendering inspections:', error);
+    this.showToast('Error loading inspections', 'error');
+  } finally {
+    this.hideLoading();
+  }
+},
 
   async openAddComplaintModal() {
     document.getElementById('complaint-id').value = '';
@@ -2370,51 +2425,63 @@ async viewContractDetail(contractId) {
     document.getElementById('complaint-modal').classList.add('hidden');
   },
 
-  async saveComplaint() {
-    const customerNo = document.getElementById('complaint-customer').value;
-    const dateReported = document.getElementById('complaint-date').value;
-    const description = document.getElementById('complaint-description').value.trim();
+async saveComplaint() {
+  const customerNo = document.getElementById('complaint-customer').value;
+  const dateReported = document.getElementById('complaint-date').value;
+  const description = document.getElementById('complaint-description').value.trim();
 
-    if (!customerNo || !dateReported || !description) {
-      this.showToast('Please fill in all required fields', 'error');
-      return;
+  if (!customerNo || !dateReported || !description) {
+    this.showToast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  this.showLoading();
+  try {
+    const complaintId = document.getElementById('complaint-id').value;
+
+    const complaint = {
+      customerNo,
+      dateReported,
+      description,
+      priorityLevel: document.getElementById('complaint-priority').value,
+      assignedTo: document.getElementById('complaint-assigned').value,
+      resolutionNotes: document.getElementById('complaint-resolution').value.trim(),
+      status: 'Open' // Default status
+    };
+
+    // If editing existing complaint, preserve the ID and get existing data
+    if (complaintId) {
+      complaint.id = complaintId;
+      const existingComplaint = await DB.getComplaintById(complaintId);
+      if (existingComplaint) {
+        complaint.status = existingComplaint.status; // Preserve status
+        complaint.createdAt = existingComplaint.createdAt; // Preserve createdAt
+      }
+    } else {
+      // New complaint - set createdAt
+      complaint.createdAt = new Date().toISOString();
     }
 
-    this.showLoading();
-    try {
-      const complaintId = document.getElementById('complaint-id').value;
+    await DB.saveComplaint(complaint);
 
-      const complaint = {
-        id: complaintId || null,
-        customerNo,
-        dateReported,
-        description,
-        priorityLevel: document.getElementById('complaint-priority').value,
-        assignedTo: document.getElementById('complaint-assigned').value,
-        resolutionNotes: document.getElementById('complaint-resolution').value.trim(),
-        status: complaintId ? (await DB.getComplaintById(complaintId))?.status || 'Open' : 'Open',
-        createdAt: complaintId ? undefined : new Date().toISOString()
-      };
+    await DB.saveContractUpdate({
+      customerNo,
+      changeType: complaintId ? 'Complaint Updated' : 'Complaint Created',
+      oldValue: '-',
+      newValue: description.substring(0, 50),
+      reason: complaint.priorityLevel
+    });
 
-      await DB.saveComplaint(complaint);
-
-      await DB.saveContractUpdate({
-        customerNo,
-        changeType: complaintId ? 'Complaint Updated' : 'Complaint Created',
-        oldValue: '-',
-        newValue: description.substring(0, 50),
-        reason: complaint.priorityLevel
-      });
-
-      this.closeComplaintModal();
-      this.showToast(complaintId ? 'Complaint updated' : 'Complaint created');
-      this.renderComplaintsPage();
-    } catch (error) {
-      this.showToast('Error saving complaint: ' + error.message, 'error');
-    } finally {
-      this.hideLoading();
-    }
-  },
+    this.closeComplaintModal();
+    this.showToast(complaintId ? 'Complaint updated' : 'Complaint created');
+    this.renderComplaintsPage();
+  } catch (error) {
+    console.error('Error saving complaint:', error);
+    this.showToast('Error saving complaint: ' + error.message, 'error');
+  } finally {
+    this.hideLoading();
+  }
+},
 
   async completeComplaint(complaintId) {
     this.showLoading();
